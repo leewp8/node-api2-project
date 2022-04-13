@@ -43,6 +43,9 @@ router.get('/', (req, res) => {
         res.status(400).json({ message: 'Please provide title and contents for the post'})
     } else {
     Post.insert(post)
+        .then(({ id }) => {
+            return Post.findById(id)
+        })
       .then(post => {
         res.status(201).json(post);
         
@@ -60,13 +63,23 @@ router.get('/', (req, res) => {
     if (!post.title || !post.contents) {
         res.status(400).json({ message: 'Please provide title and contents for the post'})
     } else {
-    Post.update(id, post)
+    Post.findById(id)
       .then(updatedPost => {
         if (!updatedPost) {
             res.status(404).json({ message: 'The post with the specified ID does not exist' });
         } else {
-            res.status(200).json(updatedPost);
+            return Post.update(id, post)
         }
+      })
+      .then(data => {
+          if (data) {
+              return Post.findById(id)
+          }
+      })
+      .then(post => {
+          if (post) {
+            res.status(200).json(post)
+          }
       })
       .catch(error => {
         res.status(500).json({ message: 'The post information could not be modified' });
@@ -76,16 +89,30 @@ router.get('/', (req, res) => {
 
   router.delete('/:id', (req, res) => {
     Post.remove(req.params.id)
-        .then(user => {
-            if (!user) {
+        .then(post => {
+            if (!post) {
                 res.status(404).json({ message: 'The post with the specified ID does not exist' })
             } else {
-                res.json(user)
+                res.json(post)
             }
         })
         .catch(err => {
             res.status(500).json({ message: 'The post could not be removed' });
         })
+})
+
+router.get('/:id/comments', async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id)
+        if (!post) {
+            res.status(404).json({ message: 'The post with the specified ID does not exist'})
+        } else {
+            const comments = await Post.findPostComments(req.params.id)
+            res.json(comments)
+        }
+    } catch (err) {
+        res.status(500).json({ message: 'The comments information could not be retrieved'})
+    }
 })
  
 
